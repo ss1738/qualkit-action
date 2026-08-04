@@ -1,0 +1,34 @@
+name: "qualkit gate"
+description: "Statistical assurance gate for model PRs: blocks merge when compression breaks conformal coverage or prediction sets become uninformative. First conformal CI gate."
+branding:
+  icon: "shield"
+  color: "blue"
+inputs:
+  config:
+    description: "Path (in your repo) to the qualkit config module defining get_reference_model / get_deploy_model / get_cal_loader (and optionally get_probe_loader)"
+    required: true
+  alpha:
+    description: "Conformal miscoverage level (target coverage = 1 - alpha)"
+    default: "0.10"
+  min-coverage-floor:
+    description: "Fail if the forecast stale-calibration coverage floor is below this"
+    default: "0.85"
+  max-mean-setsize:
+    description: "Fail if mean recalibrated prediction-set size exceeds this"
+    default: "1.5"
+  seu-bits:
+    description: "Storage format assumed for the SEU probe"
+    default: "8"
+runs:
+  using: "composite"
+  steps:
+    - name: Install qualkit
+      shell: bash
+      run: pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install --quiet "git+https://github.com/ss1738/qualkit"
+    - name: Run assurance gate
+      shell: bash
+      run: python3 "${{ github.action_path }}/runner.py" --config "${{ inputs.config }}" --alpha "${{ inputs.alpha }}" --min-coverage-floor "${{ inputs['min-coverage-floor'] }}" --max-mean-setsize "${{ inputs['max-mean-setsize'] }}" --seu-bits "${{ inputs['seu-bits'] }}"
+    - name: Upload report
+      if: always()
+      shell: bash
+      run: echo "Report written to qualkit_report.json / qualkit_report.md"
